@@ -69,17 +69,20 @@ int main(int argc, char *argv[])
     SDL_Surface *font_surface = sdl_check_pointer( get_suface_from_file(FONT));
     SDL_Texture *font_texture = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
     SDL_Rect font_rect = (SDL_Rect) {
-        .x = 18 - 1,
+        .x = 0,
         .y = 0,
         .w = 18,
         .h = 25
     };
-    SDL_Rect font_dest = (SDL_Rect) {
+
+    SDL_Rect output_rect = (SDL_Rect) {
         .x = 0,
         .y = 0,
-        .w = 18 * 4,
-        .h = 25 * 4
+        .w = 18 * 2,
+        .h = 25 * 2
     };
+
+    size_t count = 0;
 
     bool quit = false;
     while (!quit) {
@@ -91,12 +94,18 @@ int main(int argc, char *argv[])
                 break;
             }
             }
-
-            sdl_check_code(SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255));
-            sdl_check_code(SDL_RenderClear(renderer));
-            sdl_check_code(SDL_RenderCopy(renderer, font_texture, &font_rect, &font_dest));
-            SDL_RenderPresent(renderer);
         }
+
+        sdl_check_code(SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255));
+        sdl_check_code(SDL_RenderClear(renderer));
+
+        count++;
+        if (count % 10 == 0)
+            output_rect.x += 1;
+        if (output_rect.x >= 512 + font_rect.w)
+            output_rect.x = -font_rect.w;
+        sdl_check_code(SDL_RenderCopy(renderer, font_texture, &font_rect, &output_rect));
+        SDL_RenderPresent(renderer);
     }
 
     SDL_Quit();
