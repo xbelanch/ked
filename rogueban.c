@@ -5,8 +5,9 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
+#include "./v2.h"
 
-#define FONT "./perfect_dos_font/perfect_dos_vga_437_regular_24.PNG"
+#define FONT "./font/8x8.png"
 
 void sdl_check_code(int code)
 {
@@ -59,27 +60,34 @@ SDL_Surface *get_suface_from_file(const char *file_path)
                                                       rmask, gmask, bmask, amask));
 }
 
+// void render_text(SDL_Renderer *renderer, SDL_Texture *font, const char *text, Vec2f pos, Uint32 color, float scale)
+// {
+
+// }
+
 int main(int argc, char *argv[])
 {
     (void) argc;
     (void) argv[0];
+
     sdl_check_code(SDL_Init(SDL_INIT_VIDEO));
     SDL_Window *window = sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, 512, 512, SDL_WINDOW_RESIZABLE));
     SDL_Renderer *renderer = sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
     SDL_Surface *font_surface = sdl_check_pointer( get_suface_from_file(FONT));
+    SDL_SetColorKey(font_surface, SDL_TRUE, 0x0);
     SDL_Texture *font_texture = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
     SDL_Rect font_rect = (SDL_Rect) {
-        .x = 0,
+        .x = 8,
         .y = 0,
-        .w = 18,
-        .h = 25
+        .w = 8,
+        .h = 8
     };
 
     SDL_Rect output_rect = (SDL_Rect) {
         .x = 0,
         .y = 0,
-        .w = 18 * 2,
-        .h = 25 * 2
+        .w = 8 * 8,
+        .h = 8 * 8
     };
 
     size_t count = 0;
