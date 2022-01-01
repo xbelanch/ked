@@ -20,10 +20,16 @@
 #define MAX_NUMBER_CHAR_HEIGHT 24
 #define WINDOW_WIDTH  (FONT_CHAR_WIDTH * MAX_NUMBER_CHAR_WIDTH * SCALE)
 #define WINDOW_HEIGHT (FONT_CHAR_HEIGHT * MAX_NUMBER_CHAR_WIDTH * SCALE)
+#define ASCII_TABLE_SIZE 128
 
 #define UNPACK_RGBA(color)  (Uint8)(color>>24),(Uint8)(color>>16),(Uint8)(color>>8),(color&0xff)
 #define UNPACK_RGB(color) (Uint8)(color>>24),(Uint8)(color>>16),(Uint8)(color>>8)
 #define UNPACK_ALPHA(color) (color&0xff)
+
+typedef struct {
+    SDL_Texture *spritesheet;
+    SDL_Rect glyph_table[ASCII_TABLE_SIZE];
+} Font;
 
 void sdl_check_code(int code)
 {
@@ -76,9 +82,22 @@ SDL_Surface *get_suface_from_file(const char *file_path)
                                                       rmask, gmask, bmask, amask));
 }
 
+Font font_load_from_file(const char *filepath, SDL_Renderer *renderer, Uint32 colorKey)
+{
+    Font font = {0};
+    SDL_Surface *font_surface = sdl_check_pointer(get_suface_from_file(filepath));
+    SDL_SetColorKey(font_surface, SDL_TRUE, colorKey);
+    font.spritesheet = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
+    SDL_FreeSurface(font_surface);
+
+    // TODO: Initialize glyph table
+
+    return (font);
+}
+
 void render_char(SDL_Renderer *renderer, SDL_Texture *font, const char c, Vec2f pos, Uint32 color, float scale)
 {
-    const size_t index = (c - 32) + 32; // char space from ascii table as index
+    const size_t index = c;
     const size_t col = index % FONT_COLS;
     const size_t row = index / FONT_ROWS;
 
@@ -108,10 +127,7 @@ int main(int argc, char *argv[])
     sdl_check_code(SDL_Init(SDL_INIT_VIDEO));
     SDL_Window *window = sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE));
     SDL_Renderer *renderer = sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
-    SDL_Surface *font_surface = sdl_check_pointer( get_suface_from_file(FONT));
-    SDL_SetColorKey(font_surface, SDL_TRUE, 0x0);
-    SDL_Texture *font_texture = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
-
+    Font font = font_load_from_file(FONT, renderer, 0x0);
     bool quit = false;
     while (!quit) {
         SDL_Event event = {0};
@@ -126,13 +142,13 @@ int main(int argc, char *argv[])
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text(renderer, font_texture, "10 PRINT \"HELLO, WORLD!@", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
-        render_text(renderer, font_texture, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
+        render_text(renderer, font.spritesheet, "10 PRINT \"HELLO, WORLD!@", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
+        render_text(renderer, font.spritesheet, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
         SDL_RenderPresent(renderer);
         SDL_Delay(100);
     }
 
-    SDL_DestroyTexture(font_texture);
+    SDL_DestroyTexture(font.spritesheet);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
