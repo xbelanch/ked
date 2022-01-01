@@ -8,6 +8,12 @@
 #include "./v2.h"
 
 #define FONT "./font/8x8.png"
+#define FONT_COLS 16
+#define FONT_ROWS 16
+#define FONT_WIDTH 128
+#define FONT_HEIGHT 128
+#define FONT_CHAR_WIDTH  (FONT_WIDTH  / FONT_COLS)
+#define FONT_CHAR_HEIGHT (FONT_HEIGHT / FONT_ROWS)
 
 void sdl_check_code(int code)
 {
@@ -60,10 +66,17 @@ SDL_Surface *get_suface_from_file(const char *file_path)
                                                       rmask, gmask, bmask, amask));
 }
 
-// void render_text(SDL_Renderer *renderer, SDL_Texture *font, const char *text, Vec2f pos, Uint32 color, float scale)
-// {
+void render_char(SDL_Renderer *renderer, SDL_Texture *font, const char c, Vec2f pos, Uint32 color, float scale)
+{
+    const size_t index = (c - 32) + 32; // char space from ascii table as index
+    const size_t col = index % FONT_COLS;
+    const size_t row = index / FONT_ROWS;
 
-// }
+    const SDL_Rect src = { .x = col * FONT_CHAR_WIDTH, .y = row * FONT_CHAR_HEIGHT, .w = FONT_CHAR_WIDTH, .h = FONT_CHAR_HEIGHT };
+    const SDL_Rect dst = { .x = (int) floor(pos.x), .y = (int) floor(pos.y), .w = FONT_CHAR_WIDTH * scale, .h = FONT_CHAR_HEIGHT * scale };
+
+    sdl_check_code(SDL_RenderCopy(renderer, font, &src, &dst));
+}
 
 int main(int argc, char *argv[])
 {
@@ -76,22 +89,8 @@ int main(int argc, char *argv[])
     SDL_Surface *font_surface = sdl_check_pointer( get_suface_from_file(FONT));
     SDL_SetColorKey(font_surface, SDL_TRUE, 0x0);
     SDL_Texture *font_texture = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
-    SDL_Rect font_rect = (SDL_Rect) {
-        .x = 8,
-        .y = 0,
-        .w = 8,
-        .h = 8
-    };
 
-    SDL_Rect output_rect = (SDL_Rect) {
-        .x = 0,
-        .y = 0,
-        .w = 8 * 8,
-        .h = 8 * 8
-    };
-
-    size_t count = 0;
-
+    Vec2f pos = vec2f(0, 0);
     bool quit = false;
     while (!quit) {
         SDL_Event event = {0};
@@ -106,13 +105,7 @@ int main(int argc, char *argv[])
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255));
         sdl_check_code(SDL_RenderClear(renderer));
-
-        count++;
-        if (count % 10 == 0)
-            output_rect.x += 1;
-        if (output_rect.x >= 512 + font_rect.w)
-            output_rect.x = -font_rect.w;
-        sdl_check_code(SDL_RenderCopy(renderer, font_texture, &font_rect, &output_rect));
+        render_char(renderer, font_texture, 'a', pos, 0x0, 6);
         SDL_RenderPresent(renderer);
     }
 
