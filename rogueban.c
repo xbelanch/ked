@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -14,6 +15,15 @@
 #define FONT_HEIGHT 128
 #define FONT_CHAR_WIDTH  (FONT_WIDTH  / FONT_COLS)
 #define FONT_CHAR_HEIGHT (FONT_HEIGHT / FONT_ROWS)
+#define SCALE 3
+#define MAX_NUMBER_CHAR_WIDTH  24
+#define MAX_NUMBER_CHAR_HEIGHT 24
+#define WINDOW_WIDTH  (FONT_CHAR_WIDTH * MAX_NUMBER_CHAR_WIDTH * SCALE)
+#define WINDOW_HEIGHT (FONT_CHAR_HEIGHT * MAX_NUMBER_CHAR_WIDTH * SCALE)
+
+#define UNPACK_RGBA(color)  (Uint8)(color>>24),(Uint8)(color>>16),(Uint8)(color>>8),(color&0xff)
+#define UNPACK_RGB(color) (Uint8)(color>>24),(Uint8)(color>>16),(Uint8)(color>>8)
+#define UNPACK_ALPHA(color) (color&0xff)
 
 void sdl_check_code(int code)
 {
@@ -75,7 +85,19 @@ void render_char(SDL_Renderer *renderer, SDL_Texture *font, const char c, Vec2f 
     const SDL_Rect src = { .x = col * FONT_CHAR_WIDTH, .y = row * FONT_CHAR_HEIGHT, .w = FONT_CHAR_WIDTH, .h = FONT_CHAR_HEIGHT };
     const SDL_Rect dst = { .x = (int) floor(pos.x), .y = (int) floor(pos.y), .w = FONT_CHAR_WIDTH * scale, .h = FONT_CHAR_HEIGHT * scale };
 
+    sdl_check_code(SDL_SetTextureColorMod(font, UNPACK_RGB(color)));
+    sdl_check_code(SDL_SetTextureAlphaMod(font, UNPACK_ALPHA(color)));
     sdl_check_code(SDL_RenderCopy(renderer, font, &src, &dst));
+}
+
+void render_text(SDL_Renderer *renderer, SDL_Texture *font, const char *text, Vec2f pos, Uint32 color, float scale)
+{
+    size_t len = strlen(text);
+    Vec2f cursor = pos;
+    for (size_t i = 0; i < len; ++i) {
+        render_char(renderer, font, text[i], cursor, color, scale);
+        cursor.x += (float) (FONT_CHAR_WIDTH * scale);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -84,13 +106,12 @@ int main(int argc, char *argv[])
     (void) argv[0];
 
     sdl_check_code(SDL_Init(SDL_INIT_VIDEO));
-    SDL_Window *window = sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, 512, 512, SDL_WINDOW_RESIZABLE));
+    SDL_Window *window = sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE));
     SDL_Renderer *renderer = sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
     SDL_Surface *font_surface = sdl_check_pointer( get_suface_from_file(FONT));
     SDL_SetColorKey(font_surface, SDL_TRUE, 0x0);
     SDL_Texture *font_texture = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
 
-    Vec2f pos = vec2f(0, 0);
     bool quit = false;
     while (!quit) {
         SDL_Event event = {0};
@@ -103,12 +124,17 @@ int main(int argc, char *argv[])
             }
         }
 
-        sdl_check_code(SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255));
+        sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_char(renderer, font_texture, 'a', pos, 0x0, 6);
+        render_text(renderer, font_texture, "10 PRINT \"HELLO, WORLD!@", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
+        render_text(renderer, font_texture, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
         SDL_RenderPresent(renderer);
+        SDL_Delay(100);
     }
 
+    SDL_DestroyTexture(font_texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     SDL_Quit();
     return(0);
 }
