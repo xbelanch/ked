@@ -16,11 +16,11 @@
 #define FONT_HEIGHT 128
 #define FONT_CHAR_WIDTH  (FONT_WIDTH  / FONT_COLS)
 #define FONT_CHAR_HEIGHT (FONT_HEIGHT / FONT_ROWS)
-#define SCALE 3
+#define FONT_SCALE 3.0
 #define MAX_NUMBER_CHAR_WIDTH  24
 #define MAX_NUMBER_CHAR_HEIGHT 24
-#define WINDOW_WIDTH  (FONT_CHAR_WIDTH * MAX_NUMBER_CHAR_WIDTH * SCALE)
-#define WINDOW_HEIGHT (FONT_CHAR_HEIGHT * MAX_NUMBER_CHAR_WIDTH * SCALE)
+#define WINDOW_WIDTH  (FONT_CHAR_WIDTH * MAX_NUMBER_CHAR_WIDTH * FONT_SCALE)
+#define WINDOW_HEIGHT (FONT_CHAR_HEIGHT * MAX_NUMBER_CHAR_WIDTH * FONT_SCALE)
 #define ASCII_TABLE_SIZE 128
 
 #define UNPACK_RGBA(color)  (Uint8)(color>>24),(Uint8)(color>>16),(Uint8)(color>>8),(color&0xff)
@@ -150,6 +150,8 @@ int main(int argc, char *argv[])
     Font font = font_load_from_file(FONT, renderer, 0x0);
 
     Vec2f cursor = vec2f(0.0, 0.0);
+    bool lctrl = false;
+    float font_scale = FONT_SCALE;
 
     bool quit = false;
     while (!quit) {
@@ -157,12 +159,32 @@ int main(int argc, char *argv[])
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 quit = true;
-            }
-            else if (event.type == SDL_KEYDOWN ){
+            } else if (event.type == SDL_KEYUP) {
                 switch (event.key.keysym.sym) {
+                case SDLK_LCTRL: {
+                    lctrl = false;
+                    break;
+                }
+                }
+            } else if (event.type == SDL_KEYDOWN ){
+                switch (event.key.keysym.sym) {
+                case SDLK_PLUS: {
+                    if (lctrl)
+                        font_scale += 1.0;
+                    break;
+                }
+                case SDLK_MINUS: {
+                    if (lctrl)
+                        font_scale -= 1.0;
+                    break;
+                }
                 case SDLK_BACKSPACE: {
                     if (buffer_size > 0)
                         buffer_size -= 1;
+                    break;
+                }
+                case SDLK_LCTRL: {
+                    lctrl = true;
                     break;
                 }
                 case SDLK_RETURN: {
@@ -178,7 +200,7 @@ int main(int argc, char *argv[])
                 default: break;
                 }
             }
-            else if (event.type == SDL_TEXTINPUT) {
+            else if (event.type == SDL_TEXTINPUT && !lctrl) {
                 // Copy text input from keyboard to buffer
                 size_t text_size = strlen(event.text.text);
                 const size_t free_space = BUFFER_CAPACITY - buffer_size;
@@ -192,7 +214,7 @@ int main(int argc, char *argv[])
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0x0ff, 4.0f);
+        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0x0ff, font_scale);
         SDL_RenderPresent(renderer);
         SDL_Delay(30);
     }
