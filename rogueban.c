@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 #include <SDL2/SDL.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -90,32 +91,38 @@ Font font_load_from_file(const char *filepath, SDL_Renderer *renderer, Uint32 co
     font.spritesheet = sdl_check_pointer(SDL_CreateTextureFromSurface(renderer, font_surface));
     SDL_FreeSurface(font_surface);
 
-    // TODO: Initialize glyph table
+    for (size_t idx = 0; idx < ASCII_TABLE_SIZE; ++idx) {
+        const size_t col = idx % FONT_COLS;
+        const size_t row = idx / FONT_ROWS;
+        font.glyph_table[idx]= (SDL_Rect) { .x = col * FONT_CHAR_WIDTH, .y = row * FONT_CHAR_HEIGHT, .w = FONT_CHAR_WIDTH, .h = FONT_CHAR_HEIGHT };
+    }
 
     return (font);
 }
 
-void render_char(SDL_Renderer *renderer, SDL_Texture *font, const char c, Vec2f pos, Uint32 color, float scale)
+void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos, float scale)
 {
+    const SDL_Rect dst = {
+        .x = (int) floor(pos.x),
+        .y = (int) floor(pos.y),
+        .w = FONT_CHAR_WIDTH * scale,
+        .h = FONT_CHAR_HEIGHT * scale
+    };
+
     const size_t index = c;
-    const size_t col = index % FONT_COLS;
-    const size_t row = index / FONT_ROWS;
-
-    const SDL_Rect src = { .x = col * FONT_CHAR_WIDTH, .y = row * FONT_CHAR_HEIGHT, .w = FONT_CHAR_WIDTH, .h = FONT_CHAR_HEIGHT };
-    const SDL_Rect dst = { .x = (int) floor(pos.x), .y = (int) floor(pos.y), .w = FONT_CHAR_WIDTH * scale, .h = FONT_CHAR_HEIGHT * scale };
-
-    sdl_check_code(SDL_SetTextureColorMod(font, UNPACK_RGB(color)));
-    sdl_check_code(SDL_SetTextureAlphaMod(font, UNPACK_ALPHA(color)));
-    sdl_check_code(SDL_RenderCopy(renderer, font, &src, &dst));
+    assert(index <= ASCII_TABLE_SIZE);
+    sdl_check_code(SDL_RenderCopy(renderer, font->spritesheet, &font->glyph_table[index], &dst));
 }
 
-void render_text(SDL_Renderer *renderer, SDL_Texture *font, const char *text, Vec2f pos, Uint32 color, float scale)
+void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color, float scale)
 {
+    sdl_check_code(SDL_SetTextureColorMod(font->spritesheet, UNPACK_RGB(color)));
+    sdl_check_code(SDL_SetTextureAlphaMod(font->spritesheet, UNPACK_ALPHA(color)));
+
     size_t len = strlen(text);
-    Vec2f cursor = pos;
     for (size_t i = 0; i < len; ++i) {
-        render_char(renderer, font, text[i], cursor, color, scale);
-        cursor.x += (float) (FONT_CHAR_WIDTH * scale);
+        render_char(renderer, font, text[i], pos, scale);
+        pos.x += (float) (FONT_CHAR_WIDTH * scale);
     }
 }
 
@@ -142,8 +149,8 @@ int main(int argc, char *argv[])
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text(renderer, font.spritesheet, "10 PRINT \"HELLO, WORLD!@", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
-        render_text(renderer, font.spritesheet, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
+        render_text(renderer, &font, "10 PRINT \"Rogueban\"", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
+        render_text(renderer, &font, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
         SDL_RenderPresent(renderer);
         SDL_Delay(100);
     }
