@@ -100,13 +100,16 @@ Font font_load_from_file(const char *filepath, SDL_Renderer *renderer, Uint32 co
     return (font);
 }
 
-void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos, float scale)
+// TODO: avoid this as global variable
+float zoom_factor = 1.0;
+
+void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos)
 {
     const SDL_Rect dst = {
         .x = (int) floor(pos.x),
         .y = (int) floor(pos.y),
-        .w = FONT_CHAR_WIDTH * scale,
-        .h = FONT_CHAR_HEIGHT * scale
+        .w = FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor,
+        .h = FONT_CHAR_HEIGHT * FONT_SCALE * zoom_factor
     };
 
     const size_t index = c;
@@ -114,26 +117,39 @@ void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos, fl
     sdl_check_code(SDL_RenderCopy(renderer, font->spritesheet, &font->glyph_table[index], &dst));
 }
 
-void render_text_sized(SDL_Renderer *renderer, Font *font, const char *buffer, size_t buffer_size, Vec2f pos, Uint32 color, float scale)
+void render_text_sized(SDL_Renderer *renderer, Font *font, const char *buffer, size_t buffer_size, Vec2f pos, Uint32 color)
 {
     sdl_check_code(SDL_SetTextureColorMod(font->spritesheet, UNPACK_RGB(color)));
     sdl_check_code(SDL_SetTextureAlphaMod(font->spritesheet, UNPACK_ALPHA(color)));
 
     for (size_t i = 0; i < buffer_size; ++i) {
-        render_char(renderer, font, buffer[i], pos, scale);
-        pos.x += (float) (FONT_CHAR_WIDTH * scale);
+        render_char(renderer, font, buffer[i], pos);
+        pos.x += (float) (FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor);
     }
 }
 
-void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color, float scale)
+void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color)
 {
-    render_text_sized(renderer, font, text, strlen(text), pos, color, scale);
+    render_text_sized(renderer, font, text, strlen(text), pos, color);
 }
 
 
 #define BUFFER_CAPACITY 1024 // 1 kilobyte bro!
 char buffer[BUFFER_CAPACITY];
 size_t buffer_size = 0;
+size_t buffer_cursor = 0;
+
+void render_cursor(SDL_Renderer *renderer, Uint32 color)
+{
+    SDL_Rect rect = {
+        .x = (int) floorf(buffer_cursor * FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor),
+        .y = 0,
+        .w = FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor,
+        .h = FONT_CHAR_HEIGHT * FONT_SCALE * zoom_factor
+    };
+    sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(color)));
+    sdl_check_code(SDL_RenderFillRect(renderer, &rect));
+}
 
 int main(int argc, char *argv[])
 {
@@ -151,7 +167,7 @@ int main(int argc, char *argv[])
 
     Vec2f cursor = vec2f(0.0, 0.0);
     bool lctrl = false;
-    float font_scale = FONT_SCALE;
+
 
     bool quit = false;
     while (!quit) {
@@ -170,17 +186,21 @@ int main(int argc, char *argv[])
                 switch (event.key.keysym.sym) {
                 case SDLK_PLUS: {
                     if (lctrl)
-                        font_scale += 1.0;
+                        zoom_factor += 0.25;
                     break;
                 }
                 case SDLK_MINUS: {
-                    if (lctrl)
-                        font_scale -= 1.0;
+                    if (lctrl) {
+                        if (zoom_factor >= 0.75)
+                            zoom_factor -= 0.25;
+                    }
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    if (buffer_size > 0)
+                    if (buffer_size > 0) {
                         buffer_size -= 1;
+                        buffer_cursor = buffer_size;
+                    }
                     break;
                 }
                 case SDLK_LCTRL: {
@@ -188,9 +208,7 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_RETURN: {
-                    // TODO: Implement that
-                    // cursor.x = 0;
-                    // cursor.y += 16;
+                    // TODO: Implement lines
                     break;
                 }
                 case SDLK_ESCAPE: {
@@ -209,12 +227,15 @@ int main(int argc, char *argv[])
 
                 memcpy(buffer + buffer_size, event.text.text, text_size);
                 buffer_size += text_size;
+                buffer_cursor = buffer_size;
             }
         }
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0x0ff, font_scale);
+        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0x0ff);
+        // TODO: Blinking cursor
+        render_cursor(renderer, 0xff00ffff);
         SDL_RenderPresent(renderer);
         SDL_Delay(30);
     }
