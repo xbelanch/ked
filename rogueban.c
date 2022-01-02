@@ -114,17 +114,26 @@ void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos, fl
     sdl_check_code(SDL_RenderCopy(renderer, font->spritesheet, &font->glyph_table[index], &dst));
 }
 
-void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color, float scale)
+void render_text_sized(SDL_Renderer *renderer, Font *font, const char *buffer, size_t buffer_size, Vec2f pos, Uint32 color, float scale)
 {
     sdl_check_code(SDL_SetTextureColorMod(font->spritesheet, UNPACK_RGB(color)));
     sdl_check_code(SDL_SetTextureAlphaMod(font->spritesheet, UNPACK_ALPHA(color)));
 
-    size_t len = strlen(text);
-    for (size_t i = 0; i < len; ++i) {
-        render_char(renderer, font, text[i], pos, scale);
+    for (size_t i = 0; i < buffer_size; ++i) {
+        render_char(renderer, font, buffer[i], pos, scale);
         pos.x += (float) (FONT_CHAR_WIDTH * scale);
     }
 }
+
+void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color, float scale)
+{
+    render_text_sized(renderer, font, text, strlen(text), pos, color, scale);
+}
+
+
+#define BUFFER_CAPACITY 1024 // 1 kilobyte bro!
+char buffer[BUFFER_CAPACITY];
+size_t buffer_size = 0;
 
 int main(int argc, char *argv[])
 {
@@ -132,27 +141,60 @@ int main(int argc, char *argv[])
     (void) argv[0];
 
     sdl_check_code(SDL_Init(SDL_INIT_VIDEO));
-    SDL_Window *window = sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE));
-    SDL_Renderer *renderer = sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
+    SDL_Window *window =
+        sdl_check_pointer(SDL_CreateWindow("Rogueban", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE));
+
+    SDL_Renderer *renderer =
+        sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
+
     Font font = font_load_from_file(FONT, renderer, 0x0);
+
+    Vec2f cursor = vec2f(0.0, 0.0);
+
     bool quit = false;
     while (!quit) {
         SDL_Event event = {0};
         while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-            case SDL_QUIT: {
+            if (event.type == SDL_QUIT) {
                 quit = true;
-                break;
             }
+            else if (event.type == SDL_KEYDOWN ){
+                switch (event.key.keysym.sym) {
+                case SDLK_BACKSPACE: {
+                    if (buffer_size > 0)
+                        buffer_size -= 1;
+                    break;
+                }
+                case SDLK_RETURN: {
+                    // TODO: Implement that
+                    // cursor.x = 0;
+                    // cursor.y += 16;
+                    break;
+                }
+                case SDLK_ESCAPE: {
+                    quit = true;
+                    break;
+                }
+                default: break;
+                }
+            }
+            else if (event.type == SDL_TEXTINPUT) {
+                // Copy text input from keyboard to buffer
+                size_t text_size = strlen(event.text.text);
+                const size_t free_space = BUFFER_CAPACITY - buffer_size;
+                if (text_size > free_space)
+                    text_size = free_space;
+
+                memcpy(buffer + buffer_size, event.text.text, text_size);
+                buffer_size += text_size;
             }
         }
 
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(0xaaaaaaff)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text(renderer, &font, "10 PRINT \"Rogueban\"", vec2f(0.0, 0.0), 0xff0000ff, 3.0f);
-        render_text(renderer, &font, "20 GOTO 10", vec2f(0.0, 24.0), 0xff00ffff, 3.0f);
+        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0x0ff, 4.0f);
         SDL_RenderPresent(renderer);
-        SDL_Delay(100);
+        SDL_Delay(30);
     }
 
     SDL_DestroyTexture(font.spritesheet);
