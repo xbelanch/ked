@@ -187,7 +187,8 @@ int main(int argc, char *argv[])
     bool quit = false;
 
     // Start with some string
-    memcpy(buffer, "Hello world!", strlen("Hello world!"));
+    char* title = "Rogueban 0.1";
+    memcpy(buffer, title, strlen(title));
     buffer_size += strlen(buffer);
     buffer_cursor += buffer_size;
 
@@ -218,9 +219,10 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_BACKSPACE: {
+                    // TODO: Fix this
                     if (buffer_size > 0) {
                         buffer_size -= 1;
-                        buffer_cursor = buffer_size;
+                        buffer_cursor--;
                     }
                     break;
                 }
@@ -232,6 +234,7 @@ int main(int argc, char *argv[])
                 }
                 case SDLK_RIGHT: {
                     if (buffer_cursor < buffer_size) {
+                        // TODO Same issue
                         buffer_cursor += 1;
                     }
                     break;
@@ -258,9 +261,12 @@ int main(int argc, char *argv[])
                 if (text_size > free_space)
                     text_size = free_space;
 
-                memcpy(buffer + buffer_size, event.text.text, text_size);
-                buffer_size += text_size;
-                buffer_cursor = buffer_size;
+                {
+                    memmove(buffer + buffer_cursor + 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
+                    memcpy(buffer + buffer_cursor, event.text.text, text_size);
+                    buffer_size += text_size;
+                    buffer_cursor += text_size;
+                }
             }
         }
         // Render background color
