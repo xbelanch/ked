@@ -219,9 +219,9 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    // TODO: Fix this
                     if (buffer_size > 0) {
-                        buffer_size -= 1;
+                        memmove(buffer + buffer_cursor - 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
+                        buffer_size--;
                         buffer_cursor--;
                     }
                     break;
