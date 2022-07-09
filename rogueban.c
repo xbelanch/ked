@@ -165,6 +165,19 @@ void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
     }
 }
 
+void buffer_insert_text_before_cursor(const char* text)
+{
+    size_t text_size = strlen(text);
+    const size_t free_space = BUFFER_CAPACITY - buffer_size;
+    if (text_size > free_space) {
+        text_size = free_space;
+    }
+    memmove(buffer + buffer_cursor + text_size, buffer + buffer_cursor, buffer_size - buffer_cursor);
+    memcpy(buffer + buffer_cursor, text, text_size);
+    buffer_size += text_size;
+    buffer_cursor += text_size;
+}
+
 // @TODO: Multiple lines
 // @TODO: Save/Load file
 
@@ -186,7 +199,7 @@ int main(int argc, char *argv[])
     bool quit = false;
 
     // Start with some string
-    char* title = "Rogueban\n0.1";
+    char* title = "Rogueban 0.1";
     memcpy(buffer, title, strlen(title));
     buffer_size += strlen(buffer);
     buffer_cursor += buffer_size;
@@ -254,18 +267,7 @@ int main(int argc, char *argv[])
                 }
             }
             else if (event.type == SDL_TEXTINPUT && !lctrl) {
-                // Copy text input from keyboard to buffer
-                size_t text_size = strlen(event.text.text);
-                const size_t free_space = BUFFER_CAPACITY - buffer_size;
-                if (text_size > free_space)
-                    text_size = free_space;
-
-                {
-                    memmove(buffer + buffer_cursor + 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
-                    memcpy(buffer + buffer_cursor, event.text.text, text_size);
-                    buffer_size += text_size;
-                    buffer_cursor += text_size;
-                }
+                buffer_insert_text_before_cursor(event.text.text);
             }
         }
         // Render background color
