@@ -102,7 +102,7 @@ Font font_load_from_file(const char *filepath, SDL_Renderer *renderer, Uint32 co
     return (font);
 }
 
-// TODO: avoid this as global variable
+// @TODO: avoid this as global variable
 float zoom_factor = 1.0;
 
 void set_texture_color(SDL_Texture *texture, Uint32 color)
@@ -165,9 +165,8 @@ void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
     }
 }
 
-// TODO: Move the cursor around
-// TODO: Multiple lines
-// TODO: Save/Load file
+// @TODO: Multiple lines
+// @TODO: Save/Load file
 
 int main(int argc, char *argv[])
 {
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
     bool quit = false;
 
     // Start with some string
-    char* title = "Rogueban 0.1";
+    char* title = "Rogueban\n0.1";
     memcpy(buffer, title, strlen(title));
     buffer_size += strlen(buffer);
     buffer_cursor += buffer_size;
@@ -218,6 +217,11 @@ int main(int argc, char *argv[])
                     }
                     break;
                 }
+                case SDLK_RETURN: {
+                    // @TODO: Implement new line
+                    puts("Not implemented yet");
+                    break;
+                }
                 case SDLK_BACKSPACE: {
                     if (buffer_size > 0) {
                         memmove(buffer + buffer_cursor - 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
@@ -234,17 +238,12 @@ int main(int argc, char *argv[])
                 }
                 case SDLK_RIGHT: {
                     if (buffer_cursor < buffer_size) {
-                        // TODO Same issue
                         buffer_cursor += 1;
                     }
                     break;
                 }
                 case SDLK_LCTRL: {
                     lctrl = true;
-                    break;
-                }
-                case SDLK_RETURN: {
-                    // TODO: Implement lines
                     break;
                 }
                 case SDLK_ESCAPE: {
@@ -273,7 +272,7 @@ int main(int argc, char *argv[])
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(BACKGROUND_COLOR)));
         sdl_check_code(SDL_RenderClear(renderer));
         render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0xffffffff);
-        // TODO: Blinking cursor
+        // @TODO: Blinking cursor
         render_cursor(renderer, &font, 0xffffffff);
         SDL_RenderPresent(renderer);
         SDL_Delay(30);
