@@ -178,9 +178,25 @@ void buffer_insert_text_before_cursor(const char* text)
     buffer_cursor += text_size;
 }
 
+void buffer_backspace(void)
+{
+    if (buffer_cursor > 0 && buffer_size > 0) {
+        memmove(buffer + buffer_cursor - 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
+        buffer_size -= 1;
+        buffer_cursor -=1;
+    }
+}
+
+void buffer_delete(void)
+{
+    if (buffer_cursor < buffer_size && buffer_size > 0) {
+        memmove(buffer + buffer_cursor, buffer + buffer_cursor + 1, buffer_size - buffer_cursor - 1);
+        buffer_size -= 1;
+    }
+}
+// @TODO: Blinking cursor (23-07-2022)
 // @TODO: Multiple lines
 // @TODO: Save/Load file
-
 int main(int argc, char *argv[])
 {
     (void) argc;
@@ -227,8 +243,7 @@ int main(int argc, char *argv[])
                     if (lctrl) {
                         if (zoom_factor >= 0.75)
                             zoom_factor -= 0.25;
-                    }
-                    break;
+                    } break;
                 }
                 case SDLK_RETURN: {
                     // @TODO: Implement new line
@@ -236,24 +251,22 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    if (buffer_size > 0) {
-                        memmove(buffer + buffer_cursor - 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
-                        buffer_size--;
-                        buffer_cursor--;
-                    }
+                    buffer_backspace();
+                    break;
+                }
+                case SDLK_DELETE: {
+                    buffer_delete();
                     break;
                 }
                 case SDLK_LEFT: {
                     if (buffer_cursor > 0) {
                         buffer_cursor -= 1;
-                    }
-                    break;
+                    } break;
                 }
                 case SDLK_RIGHT: {
                     if (buffer_cursor < buffer_size) {
                         buffer_cursor += 1;
-                    }
-                    break;
+                    } break;
                 }
                 case SDLK_LCTRL: {
                     lctrl = true;
