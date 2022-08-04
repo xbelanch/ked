@@ -1,6 +1,6 @@
-# ked
+# ted
 
-ked is just a simple editor based on Tsoding's Dramatic Editor [ded](https://github.com/tsoding/ded). Still I don't know what's the first letter means. BTW I hope learn something about how text editors works, SDL2 and OpenGL stuff.
+ted (@tsoding's editor) is a simple copy-and-learn of the unfinished Tsoding's Dramatic Editor [ded](https://github.com/tsoding/ded).
 
 ## References
 

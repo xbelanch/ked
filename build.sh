@@ -1,8 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 
 set -xe
 
-out="ked"
+out="ted"
 cc="/usr/bin/gcc"
 cflags="-Wall -Wextra -std=c11 -pedantic -ggdb"
 libs="`pkg-config --cflags --libs sdl2` -lm"
