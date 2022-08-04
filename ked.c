@@ -8,7 +8,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 #include "./v2.h"
-#include "./buffer.h"
+#include "./editor.h"
 
 #define FONT "./font/8x8.png"
 #define FONT_COLS 16
@@ -30,9 +30,11 @@
 
 #define BACKGROUND_COLOR 0x3c3c3cff
 
-// Global variables? hummm
+// Global variables (at the moment...)
+Editor editor = {0};
 Line line = {0};
 size_t cursor = 0;
+float zoom_factor = 1.0;
 
 typedef struct {
     SDL_Texture *spritesheet;
@@ -106,9 +108,6 @@ Font font_load_from_file(const char *filepath, SDL_Renderer *renderer, Uint32 co
     return (font);
 }
 
-// @TODO: avoid this as global variable
-float zoom_factor = 1.0;
-
 void set_texture_color(SDL_Texture *texture, Uint32 color)
 {
     sdl_check_code(SDL_SetTextureColorMod(texture, UNPACK_RGB(color)));
@@ -162,6 +161,9 @@ void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
 // @TODO: Blinking cursor (23-07-2022)
 // @TODO: Multiple lines
 // @TODO: Save/Load file
+// @TODO: Support for extended ASCII (2^8) (04-08-2022)
+// Read this related post: https://stackoverflow.com/a/41198513/553803
+
 int main(int argc, char *argv[])
 {
     (void) argc;
@@ -180,7 +182,7 @@ int main(int argc, char *argv[])
 
     // Start with some string
     char* title = "Rogueban 0.1";
-    line_insert_text_before(&line, title, cursor);
+    line_insert_text_before(&line, title, &cursor);
     cursor += line.size;
 
     while (!quit) {
@@ -214,14 +216,14 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    line_backspace(&line, cursor);
+                    line_backspace(&line, &cursor);
                     if (cursor > 0) {
                         cursor -= 1;
                     }
                     break;
                 }
                 case SDLK_DELETE: {
-                    line_delete(&line, cursor);
+                    line_delete(&line, &cursor);
                     break;
                 }
                 case SDLK_LEFT: {
@@ -246,7 +248,7 @@ int main(int argc, char *argv[])
                 }
             }
             else if (event.type == SDL_TEXTINPUT && !lctrl) {
-                line_insert_text_before(&line, event.text.text, cursor);
+                line_insert_text_before(&line, event.text.text, &cursor);
                 cursor += strlen(event.text.text);
             }
         }
