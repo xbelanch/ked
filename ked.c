@@ -119,12 +119,12 @@ void render_char(SDL_Renderer *renderer, Font *font, const char c, Vec2f pos)
     const SDL_Rect dst = {
         .x = (int) floor(pos.x),
         .y = (int) floor(pos.y),
-        .w = FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor,
-        .h = FONT_CHAR_HEIGHT * FONT_SCALE * zoom_factor
+        .w = FONT_CHAR_WIDTH * FONT_SCALE,
+        .h = FONT_CHAR_HEIGHT * FONT_SCALE
     };
 
-    const size_t index = c;
-    assert(index <= ASCII_TABLE_SIZE);
+    // assert(index <= ASCII_TABLE_SIZE);
+    const uint8_t index = c % ASCII_TABLE_SIZE;
     sdl_check_code(SDL_RenderCopy(renderer, font->spritesheet, &font->glyph_table[index], &dst));
 }
 
@@ -134,28 +134,33 @@ void render_text_sized(SDL_Renderer *renderer, Font *font, const char *buffer, s
 
     for (size_t i = 0; i < buffer_size; ++i) {
         render_char(renderer, font, buffer[i], pos);
-        pos.x += (float) (FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor);
+        pos.x += (float) (FONT_CHAR_WIDTH * FONT_SCALE);
     }
 }
 
 void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
 {
-    const Vec2f pos = vec2f(cursor * FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor, 0.0);
+    const Vec2f pos =
+        vec2f(
+        (float) editor.cursor_col * FONT_CHAR_WIDTH * FONT_SCALE,
+        (float) editor.cursor_row * FONT_CHAR_WIDTH * FONT_SCALE
+        );
+
     SDL_Rect rect = {
         .x = (int) floorf(pos.x),
-        .y = pos.y,
-        .w = FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor,
-        .h = FONT_CHAR_HEIGHT * FONT_SCALE * zoom_factor
+        .y = (int )floorf(pos.y),
+        .w = FONT_CHAR_WIDTH * FONT_SCALE,
+        .h = FONT_CHAR_HEIGHT * FONT_SCALE
     };
     sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(color)));
     sdl_check_code(SDL_RenderFillRect(renderer, &rect));
 
-    // Set texture background color
-    set_texture_color(font->spritesheet, BACKGROUND_COLOR);
-
-    if (cursor < line.size) {
-        render_char(renderer, font, line.chars[cursor], pos);
+    const char *c = editor_char_under_cursor(&editor);
+    if (c) {
+        set_texture_color(font->spritesheet, BACKGROUND_COLOR);
+        render_char(renderer, font, *c, pos);
     }
+
 }
 
 // @TODO: Blinking cursor (23-07-2022)
@@ -181,9 +186,9 @@ int main(int argc, char *argv[])
     bool quit = false;
 
     // Start with some string
-    char* title = "Rogueban 0.1";
-    line_insert_text_before(&line, title, &cursor);
-    cursor += line.size;
+    char* title = "ted v0.1";
+    editor_insert_text_before_cursor(&editor, title);
+    editor_insert_new_line(&editor);
 
     while (!quit) {
         SDL_Event event = {0};
@@ -211,30 +216,35 @@ int main(int argc, char *argv[])
                     } break;
                 }
                 case SDLK_RETURN: {
-                    // @TODO: Implement new line
-                    puts("Not implemented yet");
+                    editor_insert_new_line(&editor);
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    line_backspace(&line, &cursor);
-                    if (cursor > 0) {
-                        cursor -= 1;
-                    }
+                    editor_backspace(&editor);
                     break;
                 }
                 case SDLK_DELETE: {
-                    line_delete(&line, &cursor);
+                    editor_delete(&editor);
+                    break;
+                }
+                case SDLK_UP: {
+                    if (editor.cursor_row > 0)
+                        editor.cursor_row -= 1;
+                    break;
+                }
+                case SDLK_DOWN: {
+                    editor.cursor_row += 1;
                     break;
                 }
                 case SDLK_LEFT: {
-                    if (cursor > 0) {
-                        cursor -= 1;
-                    } break;
+                    if (editor.cursor_col > 0) {
+                        editor.cursor_col -= 1;
+                    }
+                    break;
                 }
                 case SDLK_RIGHT: {
-                    if (cursor < line.size) {
-                        cursor += 1;
-                    } break;
+                    editor.cursor_col += 1;
+                    break;
                 }
                 case SDLK_LCTRL: {
                     lctrl = true;
@@ -248,15 +258,23 @@ int main(int argc, char *argv[])
                 }
             }
             else if (event.type == SDL_TEXTINPUT && !lctrl) {
-                line_insert_text_before(&line, event.text.text, &cursor);
-                cursor += strlen(event.text.text);
+                editor_insert_text_before_cursor(&editor, event.text.text);
             }
         }
         // Render background color
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(BACKGROUND_COLOR)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text_sized(renderer, &font, line.chars, line.size, vec2f(0.0, 0.0), 0xffffffff);
+
+        // render multiple lines
+        for (size_t row = 0; row < editor.size; ++row) {
+            Line *line = editor.lines + row;
+            render_text_sized(renderer, &font, line->chars, line->size,
+                              vec2f(0, row * FONT_CHAR_HEIGHT * FONT_SCALE * zoom_factor),
+                              0xffffffff);
+        }
+        // and then... render the cursor
         render_cursor(renderer, &font, 0xffffffff);
+
         SDL_RenderPresent(renderer);
         SDL_Delay(30);
     }

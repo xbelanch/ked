@@ -21,7 +21,9 @@ typedef struct {
 } Editor;
 
 void editor_insert_text_before_cursor(Editor *editor, const char *text);
+void editor_insert_new_line(Editor *editor);
 void editor_backspace(Editor *editor);
 void editor_delete(Editor *editor);
+const char *editor_char_under_cursor(const Editor *editor);
 
 #endif // EDITOR_H_
