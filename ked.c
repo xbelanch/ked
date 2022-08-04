@@ -8,6 +8,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 #include "./v2.h"
+#include "./buffer.h"
 
 #define FONT "./font/8x8.png"
 #define FONT_COLS 16
@@ -29,6 +30,9 @@
 
 #define BACKGROUND_COLOR 0x3c3c3cff
 
+// Global variables? hummm
+Line line = {0};
+size_t cursor = 0;
 
 typedef struct {
     SDL_Texture *spritesheet;
@@ -135,19 +139,9 @@ void render_text_sized(SDL_Renderer *renderer, Font *font, const char *buffer, s
     }
 }
 
-void render_text(SDL_Renderer *renderer, Font *font, const char *text, Vec2f pos, Uint32 color)
-{
-    render_text_sized(renderer, font, text, strlen(text), pos, color);
-}
-
-#define BUFFER_CAPACITY 1024 // 1 kilobyte bro!
-char buffer[BUFFER_CAPACITY];
-size_t buffer_size = 0;
-size_t buffer_cursor = 0;
-
 void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
 {
-    const Vec2f pos = vec2f(buffer_cursor * FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor, 0.0);
+    const Vec2f pos = vec2f(cursor * FONT_CHAR_WIDTH * FONT_SCALE * zoom_factor, 0.0);
     SDL_Rect rect = {
         .x = (int) floorf(pos.x),
         .y = pos.y,
@@ -160,40 +154,11 @@ void render_cursor(SDL_Renderer *renderer, Font *font, Uint32 color)
     // Set texture background color
     set_texture_color(font->spritesheet, BACKGROUND_COLOR);
 
-    if (buffer_cursor < buffer_size) {
-        render_char(renderer, font, buffer[buffer_cursor], pos);
+    if (cursor < line.size) {
+        render_char(renderer, font, line.chars[cursor], pos);
     }
 }
 
-void buffer_insert_text_before_cursor(const char* text)
-{
-    size_t text_size = strlen(text);
-    const size_t free_space = BUFFER_CAPACITY - buffer_size;
-    if (text_size > free_space) {
-        text_size = free_space;
-    }
-    memmove(buffer + buffer_cursor + text_size, buffer + buffer_cursor, buffer_size - buffer_cursor);
-    memcpy(buffer + buffer_cursor, text, text_size);
-    buffer_size += text_size;
-    buffer_cursor += text_size;
-}
-
-void buffer_backspace(void)
-{
-    if (buffer_cursor > 0 && buffer_size > 0) {
-        memmove(buffer + buffer_cursor - 1, buffer + buffer_cursor, buffer_size - buffer_cursor);
-        buffer_size -= 1;
-        buffer_cursor -=1;
-    }
-}
-
-void buffer_delete(void)
-{
-    if (buffer_cursor < buffer_size && buffer_size > 0) {
-        memmove(buffer + buffer_cursor, buffer + buffer_cursor + 1, buffer_size - buffer_cursor - 1);
-        buffer_size -= 1;
-    }
-}
 // @TODO: Blinking cursor (23-07-2022)
 // @TODO: Multiple lines
 // @TODO: Save/Load file
@@ -210,15 +175,13 @@ int main(int argc, char *argv[])
         sdl_check_pointer(SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED));
 
     Font font = font_load_from_file(FONT, renderer, 0x0);
-    Vec2f cursor = vec2f(0.0, 0.0);
     bool lctrl = false;
     bool quit = false;
 
     // Start with some string
     char* title = "Rogueban 0.1";
-    memcpy(buffer, title, strlen(title));
-    buffer_size += strlen(buffer);
-    buffer_cursor += buffer_size;
+    line_insert_text_before(&line, title, cursor);
+    cursor += line.size;
 
     while (!quit) {
         SDL_Event event = {0};
@@ -251,21 +214,24 @@ int main(int argc, char *argv[])
                     break;
                 }
                 case SDLK_BACKSPACE: {
-                    buffer_backspace();
+                    line_backspace(&line, cursor);
+                    if (cursor > 0) {
+                        cursor -= 1;
+                    }
                     break;
                 }
                 case SDLK_DELETE: {
-                    buffer_delete();
+                    line_delete(&line, cursor);
                     break;
                 }
                 case SDLK_LEFT: {
-                    if (buffer_cursor > 0) {
-                        buffer_cursor -= 1;
+                    if (cursor > 0) {
+                        cursor -= 1;
                     } break;
                 }
                 case SDLK_RIGHT: {
-                    if (buffer_cursor < buffer_size) {
-                        buffer_cursor += 1;
+                    if (cursor < line.size) {
+                        cursor += 1;
                     } break;
                 }
                 case SDLK_LCTRL: {
@@ -280,14 +246,14 @@ int main(int argc, char *argv[])
                 }
             }
             else if (event.type == SDL_TEXTINPUT && !lctrl) {
-                buffer_insert_text_before_cursor(event.text.text);
+                line_insert_text_before(&line, event.text.text, cursor);
+                cursor += strlen(event.text.text);
             }
         }
         // Render background color
         sdl_check_code(SDL_SetRenderDrawColor(renderer, UNPACK_RGBA(BACKGROUND_COLOR)));
         sdl_check_code(SDL_RenderClear(renderer));
-        render_text_sized(renderer, &font, buffer, buffer_size, cursor, 0xffffffff);
-        // @TODO: Blinking cursor
+        render_text_sized(renderer, &font, line.chars, line.size, vec2f(0.0, 0.0), 0xffffffff);
         render_cursor(renderer, &font, 0xffffffff);
         SDL_RenderPresent(renderer);
         SDL_Delay(30);
